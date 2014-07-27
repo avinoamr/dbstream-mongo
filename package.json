@@ -1,0 +1,35 @@
+{
+  "name": "dbstream-mongo",
+  "version": "0.0.1",
+  "description": "Mongo DB access layer compatible with the Database Stream API",
+  "main": "mongo.js",
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/avinoamr/dbstream-mongo.git"
+  },
+  "keywords": [
+    "database",
+    "mongo",
+    "mongodb",
+    "stream",
+    "dbstream",
+    "api"
+  ],
+  "author": "Roi Avinoam",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/avinoamr/dbstream-mongo/issues"
+  },
+  "homepage": "https://github.com/avinoamr/dbstream-mongo",
+  "devDependencies": {
+    "mocha": "^1.21.0",
+    "sift": "0.0.18"
+  },
+  "dependencies": {
+    "dbstream": "git+https://github.com/avinoamr/dbstream",
+    "mongodb": "^1.4.7"
+  }
+}
