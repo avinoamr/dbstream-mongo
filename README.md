@@ -6,7 +6,7 @@ Mongo DB access layer compatible with the [dbstream](https://github.com/avinoamr
 ### Usage
 
 ```javascript
-var db = require("dbstream-memory");
+var db = require("dbstream-mongo");
 var connection = db.connect( "mongodb://127.0.0.1:27017/test", { collection: "test" } );
 
 // write or update
