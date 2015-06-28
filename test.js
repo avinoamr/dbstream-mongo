@@ -62,8 +62,24 @@ function mock_collection() {
             });
         },
         find: function ( query, options ) {
-            s = new stream.Readable({ objectMode: true });
+            var sort = options.sort || [];
+            var skip = options.skip || 0;
+            var limit = options.limit || Infinity;
+            var s = new stream.Readable({ objectMode: true });
             var results = sift( query, data );
+
+            results.sort( function ( d1, d2 ) {
+                for ( var s = 0 ; s < sort.length ; s += 1 ) {
+                    s = sort[ s ];
+                    if ( d1[ s[ 0 ] ] == d2[ s[ 0 ] ] ) continue;
+                    return d1[ s[ 0 ] ] > d2[ s[ 0 ] ] 
+                        ? s[ 1 ] : -s[ 1 ];
+                }
+                return 0;
+            })
+            results.splice( 0, skip )
+            results.splice( limit );
+
             s._read = function () {
                 if ( results.length == 0 ) return this.push( null );
                 this.push( copy( results.shift() ) );

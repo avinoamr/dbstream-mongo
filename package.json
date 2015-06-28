@@ -1,6 +1,6 @@
 {
   "name": "dbstream-mongo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Mongo DB access layer compatible with the Database Stream API",
   "main": "mongo.js",
   "scripts": {
@@ -29,7 +29,7 @@
     "sift": "0.0.18"
   },
   "dependencies": {
-    "dbstream": "git+https://github.com/avinoamr/dbstream",
+    "dbstream": "^1.0.1",
     "mongodb": "^1.4.7"
   }
 }

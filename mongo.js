@@ -57,7 +57,9 @@ Cursor.prototype._load = function () {
     var options = {};
     if ( this._limit ) options.limit = this._limit;
     if ( this._skip )  options.skip = this._skip;
-    if ( this._sort )  options.sort = this._sort;
+    if ( this._sort )  options.sort = ( this._sort || [] ).map( function ( s ) {
+        return [ s.key, s.direction ];
+    });
 
     var query = replace( {}, this._query );
     if ( query.id ) {
