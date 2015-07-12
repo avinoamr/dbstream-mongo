@@ -15,23 +15,22 @@ Cursor.prototype._save = function ( object, callback ) {
 
         var serialized = replace( {}, object );
         if ( typeof serialized.id != "undefined" ) {
-            serialized._id = serialized.id;
+            serialized._id = toObjectID( serialized.id );
             delete serialized.id;
         }
 
+        collection.save( serialized, ondone );
+
         function ondone ( err, result ) {
             if ( err ) return callback( err );
-
-            // console.log( result == 1)
             if ( typeof result == "object" ) {
-                result.id = result._id;
+                result.id = fromObjectID( result._id );
                 delete result._id;
                 replace( object, result );
             }
             callback();
         }
 
-        collection.save( serialized, ondone );
     }, this );
 };
 
@@ -41,7 +40,7 @@ Cursor.prototype._remove = function ( object, callback ) {
         return callback( new Error( msg ) );
     }
 
-    var id = object.id;
+    var id = toObjectID( object.id );
     this._conn.open( function ( err, collection ) {
         if ( err ) return callback( err );
         collection.remove({ _id: id }, function ( err ) {
@@ -63,7 +62,7 @@ Cursor.prototype._load = function () {
 
     var query = replace( {}, this._query );
     if ( query.id ) {
-        query._id = query.id;
+        query._id = toObjectID( query.id );
         delete query.id;
     }
 
@@ -81,7 +80,7 @@ Cursor.prototype._load = function () {
                 that._reading = false;
             })
             .on( "data", function ( obj ) {
-                obj.id = obj._id;
+                obj.id = fromObjectID( obj._id );
                 delete obj._id;
                 that.push( obj );
             });
@@ -146,4 +145,20 @@ module.exports.connect = function( url, options ) {
 
     conn.Cursor = _Cursor;
     return conn;
+}
+
+function toObjectID( id ) {
+    if ( typeof id == "string" && id.length == 24 && mongodb.ObjectID.isValid( id ) ) {
+        return mongodb.ObjectID( id );
+    } else {
+        return id;
+    }
+}
+
+function fromObjectID( id ) {
+    if ( id instanceof mongodb.ObjectID ) {
+        return id.toString();
+    } else {
+        return id;
+    }
 }
