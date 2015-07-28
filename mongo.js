@@ -134,6 +134,7 @@ module.exports.connect = function( url, options ) {
             if ( !err ) {
                 collection = db.collection( options.collection );
             }
+            conn.db = db;
             conn.emit( "connect", err, collection );
         });
     }
