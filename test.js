@@ -1,32 +1,76 @@
 var test = require( "dbstream/test" );
 var mongodb = require( "mongodb" );
 var stream = require( "stream" );
+var events = require( "events" );
+var assert = require( "assert" );
 var db = require( "./mongo" );
 var sift = require( "sift" );
 
 mongodb.MongoClient.connect = mock_connect;
 
 var options = { collection: "test" };
-var connection = db.connect( "mongodb://127.0.0.1:27017/test", options );
+var addr = "mongodb://127.0.0.1:27017/test1";
 
 describe( "Mongo", function() {
 
-    it( "Implements the dbstream API", test( connection ) );
+    it( "Implements the dbstream API", test( db.connect( addr, options ) ) );
+
+    it( "Supports multiple collections", function ( done ) {
+        var addr = "mongodb://127.0.0.1:27017/test2";
+        var conn1 = db.connect( addr, { collection: "test2" } )
+        var conn2 = db.connect( addr, { collection: "test3" } )
+
+        var data = [];
+        new conn1.Cursor()
+            .on( "error", done )
+            .on( "finish", function () {
+                new conn2.Cursor()
+                    .on( "error", done )
+                    .on( "data", data.push.bind( data ) )
+                    .on( "end", function () {
+                        assert.deepEqual( data, [] );
+                        done();
+                    })
+                    .find({})
+            })
+            .end( { hello: "world" } )
+
+    })
+
+    // ensure that all the connections were closed
+    after( function ( done ) {
+        this.timeout( 15000 );
+        setTimeout( function () {
+            var dbkeys = Object.keys( dbs );
+            assert.equal( dbkeys.length, 0, "No all connections were closed: " + dbkeys )
+            done();
+        }, 11000 );
+    })
 
 });
 
 var dbs = {};
+
 function mock_connect ( url, options, callback ) {
     dbs[ url ] || ( dbs[ url ] = {} );
     process.nextTick(function() {
-        callback( null, {
-            collection: function ( name ) {
-                if ( !dbs[ url ][ name ] ) {
-                    dbs[ url ][ name ] = mock_collection();
-                }
-                return dbs[ url ][ name ];
+        var db = new events.EventEmitter();
+        db.collection = function ( name ) {
+            if ( !dbs[ url ][ name ] ) {
+                dbs[ url ][ name ] = mock_collection();
             }
-        })
+            return dbs[ url ][ name ];
+        };
+        db.close = function( callback ) {
+            process.nextTick( function () {
+                delete dbs[ url ];
+                this.collection = function () {
+                    throw new Error( "Db has been closed" );
+                }
+            }.bind( this ) );
+        };
+
+        callback( null, db );
     })
 }
 

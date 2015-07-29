@@ -21,7 +21,9 @@ Cursor.prototype._save = function ( object, callback ) {
 
         collection.save( serialized, ondone );
 
+        var conn = this;
         function ondone ( err, result ) {
+            conn.done();
             if ( err ) return callback( err );
             if ( typeof result == "object" ) {
                 result.id = fromObjectID( result._id );
@@ -31,7 +33,7 @@ Cursor.prototype._save = function ( object, callback ) {
             callback();
         }
 
-    }, this );
+    });
 };
 
 Cursor.prototype._remove = function ( object, callback ) {
@@ -43,10 +45,12 @@ Cursor.prototype._remove = function ( object, callback ) {
     var id = toObjectID( object.id );
     this._conn.open( function ( err, collection ) {
         if ( err ) return callback( err );
+        var conn = this;
         collection.remove({ _id: id }, function ( err ) {
+            conn.done();
             callback( err );
         })
-    }, this );
+    });
 };
 
 Cursor.prototype._load = function () {
@@ -66,9 +70,10 @@ Cursor.prototype._load = function () {
         delete query.id;
     }
 
+    var that = this;
     this._conn.open( function ( err, collection ) {
         if ( err ) return this.emit( "error", err );
-        var that = this;
+        var conn = this;
         collection
             .find( query, options )
             .stream()
@@ -78,13 +83,14 @@ Cursor.prototype._load = function () {
             .on( "end", function () {
                 that.push( null );
                 that._reading = false;
+                conn.done();
             })
             .on( "data", function ( obj ) {
                 obj.id = fromObjectID( obj._id );
                 delete obj._id;
                 that.push( obj );
             });
-    }, this );
+    });
 }
 
 // dbstream API requires that objects be modified in-place, and not
@@ -109,34 +115,70 @@ function replace ( obj, other ) {
 }
 
 
+var connections = {};
+
+function closeDb( url ) {
+    if ( !connections[ url ] || !connections[ url ].db ) {
+        return;
+    }
+
+    // already scheduled to be closed
+    if ( connections[ url ].closeTimeout ) {
+        return;
+    }
+
+    connections[ url ].closeTimeout = setTimeout( function () {
+        connections[ url ].db.close()
+    }, 10000 );
+}
+
+function getDb ( url, options, callback ) {
+
+    // not connected at all
+    if ( !connections[ url ] ) {
+        connections[ url ] = { callbacks: [ callback ] }
+        mongodb.MongoClient.connect( url, options, function ( err, db ) {
+            if ( !err && db ) {
+                connections[ url ].db = db
+                    .on( "close", function () {
+                        delete connections[ url ];
+                    });
+            }
+            
+            connections[ url ].callbacks.forEach( function ( callback ) {
+                callback.call( null, err, db );
+            })
+        });
+        return;
+    }
+
+    clearTimeout( connections[ url ].closeTimeout );
+    delete connections[ url ].closeTimeout;
+
+    // already running, subscribe to get the connection callback
+    if ( !connections[ url ].db ) {
+        connections[ url ].callbacks.push( callback );
+        return
+    }
+
+    // already connected
+    callback( null, connections[ url ].db );
+}
 
 module.exports.connect = function( url, options ) {
     if ( !options.collection ) {
         throw new Error( "options.collection is required" );
     }
 
-    var collection, err, started = false;
     var conn = new events.EventEmitter();
-
-    conn.open = function ( callback, ctx ) {
-        if ( collection || err ) {
-            return callback.call( ctx || this, err, collection )
-        }
-
-        conn.once( "connect", function() {
-            callback.apply( ctx || this, arguments );
-        });
-
-        if ( started ) return;
-        started = true;
-        mongodb.MongoClient.connect( url, options, function ( _err, db ) {
-            err = _err;
-            if ( !err ) {
-                collection = db.collection( options.collection );
-            }
-            conn.db = db;
-            conn.emit( "connect", err, collection );
-        });
+    var callbacks = [];
+    conn.open = function ( callback ) {
+        getDb( url, options, function ( err, db ) {
+            callback.call( conn, err, err ? null : db.collection( options.collection ) );
+        })
+    }
+    conn.done = function () {
+        closeDb( url );
     }
 
     util.inherits( _Cursor, Cursor );
