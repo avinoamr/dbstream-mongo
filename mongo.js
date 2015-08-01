@@ -122,6 +122,11 @@ function closeDb( url ) {
         return;
     }
 
+    connections[ url ].clients -= 1;
+    if ( connections[ url ].clients > 0 ) {
+        return; // still has other open clients
+    }
+
     // already scheduled to be closed
     if ( connections[ url ].closeTimeout ) {
         return;
@@ -136,7 +141,7 @@ function getDb ( url, options, callback ) {
 
     // not connected at all
     if ( !connections[ url ] ) {
-        connections[ url ] = { callbacks: [ callback ] }
+        connections[ url ] = { callbacks: [ callback ], clients: 1 }
         mongodb.MongoClient.connect( url, options, function ( err, db ) {
             if ( !err && db ) {
                 connections[ url ].db = db
@@ -154,6 +159,8 @@ function getDb ( url, options, callback ) {
 
     clearTimeout( connections[ url ].closeTimeout );
     delete connections[ url ].closeTimeout;
+
+    connections[ url ].clients += 1;
 
     // already running, subscribe to get the connection callback
     if ( !connections[ url ].db ) {
