@@ -145,10 +145,7 @@ function getDb ( url, options, callback ) {
         connections[ url ] = { callbacks: [ callback ], clients: 1 }
         mongodb.MongoClient.connect( url, options, function ( err, db ) {
             if ( !err && db ) {
-                connections[ url ].db = db
-                    .on( "close", function () {
-                        delete connections[ url ];
-                    });
+                connections[ url ].db = db;
             }
             
             connections[ url ].callbacks.forEach( function ( callback ) {
