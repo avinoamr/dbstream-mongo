@@ -134,6 +134,7 @@ function closeDb( url ) {
 
     connections[ url ].closeTimeout = setTimeout( function () {
         connections[ url ].db.close()
+        delete connections[ url ];
     }, 10000 );
 }
 
