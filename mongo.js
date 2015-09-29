@@ -12,7 +12,8 @@ function Cursor( conn ) {
 Cursor.prototype._save = function ( object, callback ) {
     this._conn.open( function ( err, collection ) {
         if ( err ) return callback( err );
-
+        
+        var conn = this;
         var serialized = replace( {}, object );
         if ( typeof serialized.id != "undefined" ) {
             serialized._id = toObjectID( serialized.id );
@@ -21,7 +22,6 @@ Cursor.prototype._save = function ( object, callback ) {
 
         collection.save( serialized, ondone );
 
-        var conn = this;
         function ondone ( err, result ) {
             conn.done();
             if ( err ) return callback( err );
