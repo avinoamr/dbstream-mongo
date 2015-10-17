@@ -78,6 +78,7 @@ Cursor.prototype._load = function () {
             .find( query, options )
             .stream()
             .on( "error", function ( err ) {
+                conn.done();
                 that.emit( "error", err );
             })
             .on( "end", function () {
