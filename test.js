@@ -6,12 +6,20 @@ var assert = require( "assert" );
 var db = require( "./mongo" );
 var sift = require( "sift" );
 
-mongodb.MongoClient.connect = mock_connect;
+var connect = mongodb.MongoClient.connect;
 
 var options = { collection: "test" };
 var addr = "mongodb://127.0.0.1:27017/test1";
 
 describe( "Mongo", function() {
+
+    beforeEach( function () {
+        mongodb.MongoClient.connect = mock_connect;
+    })
+
+    after( function () {
+        mongodb.MongoClient.connect = connect;
+    })
 
     it( "Implements the dbstream API", test( db.connect( addr, options ) ) );
 
@@ -35,6 +43,23 @@ describe( "Mongo", function() {
             })
             .end( { hello: "world" } )
 
+    })
+
+    it( "throws connection errors", function ( done ) {
+        mongodb.MongoClient.connect = function ( url, options, callback ) {
+            callback( { err: "Something went wrong" } );
+        }
+
+        var addr = "mongodb://127.0.0.1:27017/test4";
+        var conn = db.connect( addr, { collection: "test4" } )
+
+        var data = [];
+        new conn.Cursor()
+            .on( "error", function ( err ) {
+                assert( err.message, "Something went wrong" )
+                done();
+            })
+            .end( { hello: "world" } )
     })
 
     // ensure that all the connections were closed

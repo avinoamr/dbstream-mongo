@@ -1,5 +1,6 @@
 var mongodb = require( "mongodb" );
 var events = require( "events" );
+var extend = require( "extend" );
 var db = require( "dbstream" );
 var util = require( "util" );
 
@@ -11,7 +12,7 @@ function Cursor( conn ) {
 
 Cursor.prototype._save = function ( object, callback ) {
     this._conn.open( function ( err, collection ) {
-        if ( err ) return callback( err );
+        if ( err ) return callback( toError( err ) );
         
         var conn = this;
         var serialized = replace( {}, object );
@@ -24,7 +25,7 @@ Cursor.prototype._save = function ( object, callback ) {
 
         function ondone ( err, result ) {
             conn.done();
-            if ( err ) return callback( err );
+            if ( err ) return callback( toError( err ) );
             if ( typeof result == "object" ) {
                 result.id = fromObjectID( result._id );
                 delete result._id;
@@ -44,11 +45,11 @@ Cursor.prototype._remove = function ( object, callback ) {
 
     var id = toObjectID( object.id );
     this._conn.open( function ( err, collection ) {
-        if ( err ) return callback( err );
+        if ( err ) return callback( toError( err ) );
         var conn = this;
         collection.remove({ _id: id }, function ( err ) {
             conn.done();
-            callback( err );
+            callback( toError( err ) );
         })
     });
 };
@@ -72,19 +73,19 @@ Cursor.prototype._load = function () {
 
     var that = this;
     this._conn.open( function ( err, collection ) {
-        if ( err ) return this.emit( "error", err );
+        if ( err ) return this.emit( "error", toError( err ) );
         var conn = this;
         collection
             .find( query, options )
             .stream()
             .on( "error", function ( err ) {
                 conn.done();
-                that.emit( "error", err );
+                that.emit( "error", toError( err ) );
             })
             .on( "end", function () {
+                conn.done();
                 that.push( null );
                 that._reading = false;
-                conn.done();
             })
             .on( "data", function ( obj ) {
                 obj.id = fromObjectID( obj._id );
@@ -148,9 +149,9 @@ function getDb ( url, options, callback ) {
             if ( !err && db ) {
                 connections[ url ].db = db;
             }
-            
+
             connections[ url ].callbacks.forEach( function ( callback ) {
-                callback.call( null, err, db );
+                callback.call( null, toError( err ), db );
             })
         });
         return;
@@ -210,4 +211,13 @@ function fromObjectID( id ) {
     } else {
         return id;
     }
+}
+
+function toError( err ) {
+    if ( !err ) return;
+    if ( err instanceof Error ) return err;
+
+    // mongo sdk might return an object with the format { err: message }
+    // instead of a proper Javascript Error instance
+    return extend( new Error( err.message || err.err ), err );
 }
