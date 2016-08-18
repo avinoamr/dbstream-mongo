@@ -4,6 +4,9 @@ var extend = require( "extend" );
 var db = require( "dbstream" );
 var util = require( "util" );
 
+module.exports.mongodb = mongodb
+module.exports.ObjectID = mongodb.ObjectID
+
 util.inherits( Cursor, db.Cursor );
 function Cursor( conn ) {
     Cursor.super_.call( this );
