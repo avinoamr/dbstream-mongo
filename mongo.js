@@ -201,6 +201,11 @@ module.exports.connect = function( url, options ) {
 }
 
 function toObjectID( id ) {
+    if (id.$in) {
+        id.$in = id.$in.map(toObjectID)
+        return id
+    }
+
     if ( typeof id == "string" && id.length == 24 && mongodb.ObjectID.isValid( id ) ) {
         return mongodb.ObjectID( id );
     } else {
