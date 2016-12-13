@@ -16,7 +16,7 @@ function Cursor( conn ) {
 Cursor.prototype._save = function ( object, callback ) {
     this._conn.open( function ( err, collection ) {
         if ( err ) return callback( toError( err ) );
-        
+
         var conn = this;
         var serialized = replace( {}, object );
         if ( typeof serialized.id != "undefined" ) {
@@ -148,9 +148,16 @@ function getDb ( url, options, callback ) {
     // not connected at all
     if ( !connections[ url ] ) {
         connections[ url ] = { callbacks: [ callback ], clients: 1 }
-        mongodb.MongoClient.connect( url, options, function ( err, db ) {
+        mongodb.MongoClient.connect( url, options, function ready( err, db ) {
             if ( !err && db ) {
                 connections[ url ].db = db;
+            }
+
+            var shouldRetry = options.retry < options.maxRetries
+            var isError = (err && err.err) // err isn't a Error instance
+            if (isError && err.err.toString().match('timed out') && shouldRetry) {
+                options.retry += 1
+                return mongodb.MongoClient.connect(url, options, ready)
             }
 
             connections[ url ].callbacks.forEach( function ( callback ) {
@@ -179,6 +186,11 @@ module.exports.connect = function( url, options ) {
     if ( !options.collection ) {
         throw new Error( "options.collection is required" );
     }
+
+    // Default maxRetries value is 1 for backwards compatibility
+    options.maxRetries || (options.maxRetries = 1)
+    // Set the number of the current try
+    options.retry = 1
 
     var conn = new events.EventEmitter();
     var callbacks = [];

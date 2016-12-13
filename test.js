@@ -62,6 +62,28 @@ describe( "Mongo", function() {
             .end( { hello: "world" } )
     })
 
+    it( "Retries connecting on timeout", function ( done ) {
+        var called = 0
+        mongodb.MongoClient.connect = function ( url, options, callback ) {
+            called += 1
+            return callback( { err: "connection to [127.0.0.1:27017] timed out" } );
+        }
+
+        var addr = "mongodb://127.0.0.1:27017/test5";
+        var conn = db.connect( addr, { collection: "test5", maxRetries: 3 } )
+
+        conn.on( "error", function () {
+            assert.equal(called, 3)
+            done()
+        })
+
+        var data = [];
+        new conn.Cursor()
+            .on( "data", function () {} )
+            .on( "error", done)
+            .find( {} )
+    })
+
     // ensure that all the connections were closed
     after( function ( done ) {
         this.timeout( 15000 );
@@ -141,7 +163,7 @@ function mock_collection() {
                 for ( var s = 0 ; s < sort.length ; s += 1 ) {
                     s = sort[ s ];
                     if ( d1[ s[ 0 ] ] == d2[ s[ 0 ] ] ) continue;
-                    return d1[ s[ 0 ] ] > d2[ s[ 0 ] ] 
+                    return d1[ s[ 0 ] ] > d2[ s[ 0 ] ]
                         ? s[ 1 ] : -s[ 1 ];
                 }
                 return 0;
@@ -165,4 +187,3 @@ function mock_collection() {
 function copy ( obj ) {
     return JSON.parse( JSON.stringify( obj ) );
 }
-
