@@ -140,7 +140,7 @@ function closeDb( url ) {
     connections[ url ].closeTimeout = setTimeout( function () {
         connections[ url ].db.close()
         delete connections[ url ];
-    }, 10000 );
+    }, 10 * 60 * 1000 );
 }
 
 function getDb ( url, options, callback ) {
