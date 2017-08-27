@@ -4,7 +4,9 @@
   "description": "Mongo DB access layer compatible with the Database Stream API",
   "main": "mongo.js",
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha"
+    "test": "node_modules/mocha/bin/mocha",
+    "postinstall": "npm run fix-dependencies",
+    "fix-dependencies": "cp node_modules/bson/browser_build/* node_modules/bson/build/Release/"
   },
   "repository": {
     "type": "git",
