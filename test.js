@@ -8,7 +8,7 @@ var sift = require( "sift" );
 
 var connect = mongodb.MongoClient.connect;
 
-var options = { collection: "test" };
+var options = { collection: "test", _closeTimeOut: 1 };
 var addr = "mongodb://127.0.0.1:27017/test1";
 
 describe( "Mongo", function() {
@@ -25,8 +25,10 @@ describe( "Mongo", function() {
 
     it( "Supports multiple collections", function ( done ) {
         var addr = "mongodb://127.0.0.1:27017/test2";
-        var conn1 = db.connect( addr, { collection: "test2" } )
-        var conn2 = db.connect( addr, { collection: "test3" } )
+        var options1 = { collection: "test2" , _closeTimeOut: 1 }
+        var options2 = { collection: "test3" , _closeTimeOut: 1 }
+        var conn1 = db.connect( addr, options1)
+        var conn2 = db.connect( addr, options2)
 
         var data = [];
         new conn1.Cursor()
@@ -86,12 +88,12 @@ describe( "Mongo", function() {
 
     // ensure that all the connections were closed
     after( function ( done ) {
-        this.timeout( 15000 );
+        this.timeout( 15 * 1000 );
         setTimeout( function () {
             var dbkeys = Object.keys( dbs );
             assert.equal( dbkeys.length, 0, "No all connections were closed: " + dbkeys )
             done();
-        }, 11000 );
+        }, 11 * 1000 );
     })
 
 });

@@ -7,6 +7,8 @@ var util = require( "util" );
 module.exports.mongodb = mongodb
 module.exports.ObjectID = mongodb.ObjectID
 
+const CLOSE_TIME_OUT = 10 * 60 * 1000 // 10 minutes
+
 util.inherits( Cursor, db.Cursor );
 function Cursor( conn ) {
     Cursor.super_.call( this );
@@ -137,10 +139,16 @@ function closeDb( url ) {
         return;
     }
 
+    let closeTimeOut = CLOSE_TIME_OUT
+    const timeOut = options._closeTimeOut
+    if (timeOut && timeOut >= 0) {
+        closeTimeOut = timeOut
+    }
+
     connections[ url ].closeTimeout = setTimeout( function () {
         connections[ url ].db.close()
         delete connections[ url ];
-    }, 10 * 60 * 1000 );
+    }, closeTimeOut );
 }
 
 function getDb ( url, options, callback ) {
