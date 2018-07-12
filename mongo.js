@@ -26,12 +26,15 @@ Cursor.prototype._save = function ( object, callback ) {
             delete serialized.id;
         }
 
-        collection.save( serialized, ondone );
+        collection.insert( serialized, ondone );
 
         function ondone ( err, result ) {
             conn.done();
             if ( err ) return callback( toError( err ) );
             if ( typeof result == "object" ) {
+                if ( result.ops && result.ops.length > 0 ) {
+                    result = result.ops[ 0 ]
+                }
                 result.id = fromObjectID( result._id );
                 delete result._id;
                 replace( object, result );
@@ -124,8 +127,8 @@ function replace ( obj, other ) {
 
 var connections = {};
 
-function closeDb( url ) {
-    if ( !connections[ url ] || !connections[ url ].db ) {
+function closeClient( url, options ) {
+    if ( !connections[ url ] || !connections[ url ].client ) {
         return;
     }
 
@@ -146,30 +149,34 @@ function closeDb( url ) {
     }
 
     connections[ url ].closeTimeout = setTimeout( function () {
-        connections[ url ].db.close()
+        connections[ url ].client.close()
         delete connections[ url ];
     }, closeTimeOut );
 }
 
-function getDb ( url, options, callback ) {
+function getClient ( url, options, callback ) {
+    let retry = options.retry
+    let maxRetries = options.maxRetries
+    delete options.retry
+    delete options.maxRetries
 
     // not connected at all
     if ( !connections[ url ] ) {
         connections[ url ] = { callbacks: [ callback ], clients: 1 }
-        mongodb.MongoClient.connect( url, options, function ready( err, db ) {
-            if ( !err && db ) {
-                connections[ url ].db = db;
+        mongodb.MongoClient.connect( url, options, function ready( err, client ) {
+            if ( !err && client ) {
+                connections[ url ].client = client;
             }
 
-            var shouldRetry = options.retry < options.maxRetries
+            var shouldRetry = retry < maxRetries
             var isError = (err && err.err) // err isn't a Error instance
             if (isError && err.err.toString().match('timed out') && shouldRetry) {
-                options.retry += 1
+                retry += 1
                 return mongodb.MongoClient.connect(url, options, ready)
             }
 
             connections[ url ].callbacks.forEach( function ( callback ) {
-                callback.call( null, toError( err ), db );
+                callback.call( null, toError( err ), client );
             })
         });
         return;
@@ -181,17 +188,20 @@ function getDb ( url, options, callback ) {
     connections[ url ].clients += 1;
 
     // already running, subscribe to get the connection callback
-    if ( !connections[ url ].db ) {
+    if ( !connections[ url ].client ) {
         connections[ url ].callbacks.push( callback );
         return
     }
 
     // already connected
-    callback( null, connections[ url ].db );
+    callback( null, connections[ url ].client );
 }
 
 module.exports.connect = function( url, options ) {
-    if ( !options.collection ) {
+    const collection = options.collection
+    delete options.collection
+
+    if ( !collection ) {
         throw new Error( "options.collection is required" );
     }
 
@@ -203,12 +213,17 @@ module.exports.connect = function( url, options ) {
     var conn = new events.EventEmitter();
     var callbacks = [];
     conn.open = function ( callback ) {
-        getDb( url, options, function ( err, db ) {
-            callback.call( conn, err, err ? null : db.collection( options.collection ) );
+        getClient( url, options, function ( err, client ) {
+            if ( err ) {
+                callback.call( conn, err, null )
+                return
+            }
+            const db = client.db()
+            callback.call( conn, null, db.collection( collection ) );
         })
     }
     conn.done = function () {
-        closeDb( url );
+        closeClient( url, options );
     }
 
     util.inherits( _Cursor, Cursor );

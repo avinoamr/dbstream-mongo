@@ -103,30 +103,36 @@ var dbs = {};
 function mock_connect ( url, options, callback ) {
     dbs[ url ] || ( dbs[ url ] = {} );
     process.nextTick(function() {
-        var db = new events.EventEmitter();
+        var client = new events.EventEmitter();
+        let db = {}
+
         db.collection = function ( name ) {
             if ( !dbs[ url ][ name ] ) {
                 dbs[ url ][ name ] = mock_collection();
             }
             return dbs[ url ][ name ];
         };
-        db.close = function( callback ) {
+
+        client.db = function () {
+            return db
+        };
+
+        client.close = function( callback ) {
             process.nextTick( function () {
                 delete dbs[ url ];
                 this.collection = function () {
-                    throw new Error( "Db has been closed" );
+                    throw new Error( "Client connection has been closed" );
                 }
             }.bind( this ) );
         };
-
-        callback( null, db );
+        callback( null, client );
     })
 }
 
 function mock_collection() {
     var data = [];
     return {
-        save: function ( obj, callback ) {
+        insert: function ( obj, callback ) {
             obj = copy( obj );
             if ( !obj._id ) {
                 obj._id = ( Math.random() * 1e17 ).toString( 36 );
