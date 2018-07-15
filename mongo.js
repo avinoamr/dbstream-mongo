@@ -26,7 +26,7 @@ Cursor.prototype._save = function ( object, callback ) {
             delete serialized.id;
         }
 
-        collection.insert( serialized, ondone );
+        collection.save( serialized, ondone );
 
         function ondone ( err, result ) {
             conn.done();
