@@ -132,7 +132,7 @@ function mock_connect ( url, options, callback ) {
 function mock_collection() {
     var data = [];
     return {
-        insert: function ( obj, callback ) {
+        save: function ( obj, callback ) {
             obj = copy( obj );
             if ( !obj._id ) {
                 obj._id = ( Math.random() * 1e17 ).toString( 36 );
