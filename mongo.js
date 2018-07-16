@@ -26,17 +26,29 @@ Cursor.prototype._save = function ( object, callback ) {
             delete serialized.id;
         }
 
-        collection.save( serialized, ondone );
+        let isUpdate = false
+
+        if ( !serialized._id ) {
+            collection.insertOne( serialized, ondone )
+        } else {
+            isUpdate = true
+            const filter = { "_id": serialized._id }
+            const update = { $set: serialized }
+            const options = { upsert: true }
+            collection.updateOne( filter, update, options, ondone );
+        }
 
         function ondone ( err, result ) {
             conn.done();
             if ( err ) return callback( toError( err ) );
             if ( typeof result == "object" ) {
                 if ( result.ops && result.ops.length > 0 ) {
-                    result = result.ops[ 0 ]
+                    result = result.ops[0]
+                    result.id = fromObjectID( result._id );
+                    delete result._id;
+                } else if ( isUpdate ) {
+                    result = {}
                 }
-                result.id = fromObjectID( result._id );
-                delete result._id;
                 replace( object, result );
             }
             callback();

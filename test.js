@@ -132,7 +132,7 @@ function mock_connect ( url, options, callback ) {
 function mock_collection() {
     var data = [];
     return {
-        save: function ( obj, callback ) {
+        insertOne: function ( obj, callback ) {
             obj = copy( obj );
             if ( !obj._id ) {
                 obj._id = ( Math.random() * 1e17 ).toString( 36 );
@@ -143,6 +143,9 @@ function mock_collection() {
                     callback( null, ( is_update ) ? 1 : copy( obj ) );
                 })
             });
+        },
+        updateOne: function ( filter, update, options, callback ) {
+            this.insertOne( update.$set, callback )
         },
         remove: function( query, callback ) {
             // console.log( query, data );
