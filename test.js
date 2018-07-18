@@ -144,8 +144,8 @@ function mock_collection() {
                 })
             });
         },
-        updateOne: function ( filter, update, options, callback ) {
-            this.insertOne( update.$set, callback )
+        replaceOne: function ( filter, obj, options, callback ) {
+            this.insertOne( obj, callback )
         },
         remove: function( query, callback ) {
             // console.log( query, data );
